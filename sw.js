@@ -1,4 +1,4 @@
-const CACHE = 'pricewise-v1';
+const CACHE = 'pricewise-v2';
 const CORE = [
   './',
   './index.html',
@@ -19,6 +19,24 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+
+  /* the app shell (navigations + index.html) should always try the network
+     first -- a stale cached copy of the *logic* is far worse than a stale
+     product photo, and this is what makes "install app -> reopen after an
+     update" show the update immediately instead of one reload later */
+  const isDocument = e.request.mode === 'navigate' || e.request.url.endsWith('/index.html') || e.request.url.endsWith('/');
+  if (isDocument) {
+    e.respondWith(
+      fetch(e.request).then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy));
+        return res;
+      }).catch(() => caches.match(e.request).then(c => c || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  /* static assets (images, icons, fonts): cache-first, refresh in the background */
   e.respondWith(
     caches.match(e.request).then(cached => {
       const network = fetch(e.request).then(res => {
