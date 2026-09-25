@@ -234,7 +234,7 @@ const bestOf = p => {
   const L = listings(p), av = L.filter(l => l.inStock);
   return (av.length ? av : L).reduce((a, b) => (b.price < a.price ? b : a));
 };
-function history(p, l) {
+function priceHistory(p, l) {
   const r = rng(hash(p.id + l.k)), start = l.price * (1.07 + r() * .17), out = [];
   for (let i = 0; i < 30; i++) {
     const t = i / 29, v = start + (l.price - start) * Math.pow(t, .85);
@@ -258,7 +258,7 @@ function search(q) {
 function summary(p) {
   const L = listings(p).sort((a, b) => a.price - b.price), best = L[0], next = L[1];
   const fast = [...L].sort((a, b) => a.eta - b.eta)[0];
-  const h = history(p, best), st = stats(h), lines = [];
+  const h = priceHistory(p, best), st = stats(h), lines = [];
   lines.push(next ? `Cheapest on ${best.pl.name} at ${inr(best.price)}, ${inr(next.price - best.price)} below ${next.pl.name}.` : `Only listed on ${best.pl.name} at ${inr(best.price)}.`);
   lines.push(fast.k === best.k ? `${best.pl.name} is also the fastest option (${best.etaTxt}).` : `Fastest is ${fast.pl.name} (${fast.etaTxt}) for ${inr(fast.price - best.price)} more.`);
   const above = (best.price - st.min) / st.min;

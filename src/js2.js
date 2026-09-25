@@ -5,6 +5,23 @@ const ui = {
   stacks: { home: [{ n: 'home', a: {} }], ai: [{ n: 'ai', a: {} }], wish: [{ n: 'wish', a: {} }], profile: [{ n: 'profile', a: {} }] },
   chat: [{ who: 'bot', t: "Hi! I'm your AI Shopping Assistant. I can help you find the best products based on your needs. What are you looking for today?" }]
 };
+/* resume exactly where the user left off across app relaunches (a real app doesn't restart at the splash screen every time) */
+const NAVKEY = 'pricewise.nav.v1';
+try {
+  const rawNav = localStorage.getItem(NAVKEY);
+  if (rawNav) {
+    const sv = JSON.parse(rawNav);
+    if (sv && sv.started) {
+      ui.started = true;
+      ui.tab = sv.tab || 'home';
+      if (sv.stacks) Object.keys(ui.stacks).forEach(k => { if (sv.stacks[k] && sv.stacks[k].length) ui.stacks[k] = sv.stacks[k]; });
+      if (sv.chat && sv.chat.length) ui.chat = sv.chat;
+    }
+  }
+} catch (e) { /* storage unavailable: run in memory */ }
+function saveNav() {
+  try { localStorage.setItem(NAVKEY, JSON.stringify({ started: ui.started, tab: ui.tab, stacks: ui.stacks, chat: ui.chat })); } catch (e) { /* ignore */ }
+}
 const SORTL = { price: 'Lowest Price First', delivery: 'Fastest Delivery', rating: 'Highest Rated', discount: 'Best Discount' };
 const SPEEDL = { instant: 'Instant (10-30 mins)', same: 'Same Day', next: 'Next Day', any: 'Any' };
 const OI = { disc: 'tdown', cash: 'wallet', card: 'card', coupon: 'ticket', ship: 'zap' };
@@ -43,7 +60,7 @@ V.splash = () => `<section class="splash mesh-cool"><div class="logo mark">${LOG
 </ul><button class="cta gold full" data-act="gosign">Get Started</button><p class="switchline light">Already have an account? <button class="light" data-act="golog">Log in</button></p><p class="proto">MINIMUM VIABLE PROTOTYPE · SAMPLE DATA</p></section>`;
 
 V.login = () => `<section class="auth">
-<div class="abar"><button class="ib" data-act="gosplash" aria-label="Back">${ic('left', 22)}</button></div>
+<div class="abar"><button class="ib" data-act="back" aria-label="Back">${ic('left', 22)}</button></div>
 <h1>Welcome back</h1><p class="sub">Log in to track prices and pick up where you left off.</p>
 <form id="loginform">
 <div class="field"><label for="lem">Email</label><input id="lem" type="email" autocomplete="email" placeholder="you@example.com" required></div>
@@ -155,7 +172,7 @@ V.compare = a => {
     const best = pool.reduce((x, y) => (y.price < x.price ? y : x)), hi = Math.max(...L.map(x => x.price));
     const next = pool.filter(x => x !== best).sort((x, y) => x.price - y.price)[0];
     const fast = [...pool].sort((x, y) => x.eta - y.eta)[0], top = [...pool].sort((x, y) => y.rating - x.rating)[0];
-    const sm = summary(p), bh = history(p, best), bspark = sparkline([bh[0], bh[7], bh[14], bh[21], bh[29]], 108, 30, 'rgba(255,255,255,.9)');
+    const sm = summary(p), bh = priceHistory(p, best), bspark = sparkline([bh[0], bh[7], bh[14], bh[21], bh[29]], 108, 30, 'rgba(255,255,255,.9)');
     body = `<section class="banner mesh-cool"><div class="row1"><div class="seal">${ic('crown', 17)}</div><div class="grow"><span class="bt">Best deal found</span><div class="bp">${inr(best.price)}</div><p>Cheapest on ${best.pl.name}${next ? ` · ${inr(next.price - best.price)} below ${next.pl.name}` : ''}</p></div>${bspark}</div>${ldr('You save vs. priciest listing', inr(hi - best.price), 'inv')}<button class="cta gold full" data-act="buy" data-k="${best.k}">Buy Now on ${best.pl.name}</button></section>
 <details class="smart" open><summary>${ic('spark', 16)}<span>Smart Summary</span><span class="verdict ${sm.buy ? 'good' : 'warn'}">${sm.buy ? 'Good time to buy' : 'Consider waiting'}</span></summary><ul>${sm.lines.map(t => `<li>${esc(t)}</li>`).join('')}</ul>${sm.buy ? '' : `<button class="lnk" data-act="track">Set a price alert ${ic('right', 14)}</button>`}<small>Generated from this comparison and the 30-day price history.</small></details>
 <div class="sec"><h2>All Platforms (${rs.length})</h2><div class="seg" role="group" aria-label="Layout"><button data-act="view" data-v="cards" aria-pressed="${ui.view === 'cards'}">${ic('cards', 15)} Cards</button><button data-act="view" data-v="table" aria-pressed="${ui.view === 'table'}">${ic('table', 15)} Table</button></div></div>
@@ -209,7 +226,7 @@ function chartHtml(H) {
   return `<div class="chart"><svg id="chart" class="cwipe" viewBox="0 0 ${W} ${HT}" role="img" aria-label="Price history for the last 30 days, one line per platform">${g}<line id="xh" x1="0" x2="0" y1="${mt}" y2="${HT - mb}" stroke="var(--ink2)" stroke-width="1" stroke-dasharray="3 3" opacity="0"/><g id="dots"></g><rect id="hit" x="${ml}" y="0" width="${W - ml - mr}" height="${HT}" fill="transparent"/></svg><div id="tip" class="tip" hidden></div></div>`;
 }
 V.tracking = a => {
-  const p = byId(a.pid), L = listings(p).sort((x, y) => x.price - y.price), H = L.map(l => ({ l, h: history(p, l) })), best = L[0], al = S.alerts.find(x => x.pid === p.id);
+  const p = byId(a.pid), L = listings(p).sort((x, y) => x.price - y.price), H = L.map(l => ({ l, h: priceHistory(p, l) })), best = L[0], al = S.alerts.find(x => x.pid === p.id);
   const def = al ? al.target : Math.round(best.price * .92 / 10) * 10, sb = stats(H[0].h);
   const days = H[0].h.map((_, i) => H.reduce((m, x) => (x.h[i] < m.v ? { v: x.h[i], k: x.l.k } : m), { v: 1e12, k: '' }).k);
   const cheapDays = days.filter(k => k === best.k).length, above = (best.price - sb.min) / sb.min;
@@ -243,7 +260,7 @@ ${l.disc ? `<div class="spec mesh-warm"><span>Special Offer</span><b>${l.disc}% 
 V.wish = () => {
   const items = S.wish.map(byId).filter(Boolean);
   return `${hdrG('Wishlist', `${items.length} saved · ${S.alerts.length} price alerts`, '', '', true)}<div class="scroll pad">
-${items.length ? items.map(p => { const b = bestOf(p), st = stats(history(p, b)), al = S.alerts.find(x => x.pid === p.id); return `<article class="wrow"><button class="wmain" data-act="open" data-pid="${p.id}">${img(p, 58)}<div class="grow"><b>${esc(p.name)}</b><span class="mute best-on">Best on ${brandMark(b.k, 15)}${b.pl.name}</span><div class="wp"><strong>${inr(b.price)}</strong><span class="trend ${st.ch < -.02 ? 'good' : st.ch > .02 ? 'bad' : 'mute'}">${ic(st.ch < -.02 ? 'tdown' : st.ch > .02 ? 'trend' : 'dot', 13)} ${st.ch < 0 ? '' : '+'}${(st.ch * 100).toFixed(0)}% / 30d</span></div></div></button>
+${items.length ? items.map(p => { const b = bestOf(p), st = stats(priceHistory(p, b)), al = S.alerts.find(x => x.pid === p.id); return `<article class="wrow"><button class="wmain" data-act="open" data-pid="${p.id}">${img(p, 58)}<div class="grow"><b>${esc(p.name)}</b><span class="mute best-on">Best on ${brandMark(b.k, 15)}${b.pl.name}</span><div class="wp"><strong>${inr(b.price)}</strong><span class="trend ${st.ch < -.02 ? 'good' : st.ch > .02 ? 'bad' : 'mute'}">${ic(st.ch < -.02 ? 'tdown' : st.ch > .02 ? 'trend' : 'dot', 13)} ${st.ch < 0 ? '' : '+'}${(st.ch * 100).toFixed(0)}% / 30d</span></div></div></button>
 <div class="wact">${al ? `<span class="bd">${ic('bell', 12)} ${inr(al.target)}</span>` : `<button class="lnk" data-act="track" data-pid="${p.id}">Set alert</button>`}<button class="ib" data-act="wish" data-pid="${p.id}" aria-pressed="true" aria-label="Remove ${esc(p.name)} from wishlist">${ic('heart', 20)}</button></div></article>`; }).join('') : empty('heart', 'Nothing saved yet', 'Tap the heart on any product to keep an eye on its price.', chipsTrending())}
 <button class="mrow big" data-act="alerts"><span class="mi">${ic('bell', 18)}</span><span class="grow">Price Alerts</span><i class="badge">${S.alerts.length}</i>${ic('right', 16)}</button></div>`;
 };
