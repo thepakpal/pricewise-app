@@ -71,6 +71,20 @@ function applyA11y() {
   document.documentElement.style.fontSize = { s: '14px', m: '16px', l: '18.5px' }[a.fs] || '16px';
   app.style.filter = a.cb === 'normal' ? '' : `url(#f-${a.cb})`;
 }
+const effTheme = () => S.theme === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : S.theme;
+function applyTheme() {
+  const app = $('#app');
+  if (S.theme === 'system') {
+    document.documentElement.removeAttribute('data-theme');
+    if (app) app.removeAttribute('data-theme');
+  } else {
+    document.documentElement.setAttribute('data-theme', S.theme);
+    /* the high-contrast overrides below are scoped as .app.hc[data-theme=...] -- a compound
+       selector needs the attribute on the SAME element as the class, so it's mirrored onto
+       #app too; :root keeps it for the base (non-HC) theme rules. */
+    if (app) app.setAttribute('data-theme', S.theme);
+  }
+}
 let tt;
 function toast(m, ms) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), ms || 2600); }
 function openSheet(html) { const s = $('#sheet'); s.innerHTML = `<div class="scrim" data-act="closesheet"></div><div class="sheetc" role="dialog" aria-modal="true">${html}</div>`; s.hidden = false; pushNav(); const b = s.querySelector('button,select,input'); if (b) b.focus({ preventScroll: true }); }
@@ -106,9 +120,20 @@ const A = {
   start() { ui.started = true; pushNav(); render(0, 'fwd'); },
   golog() { ui.pre = 'login'; pushNav(); render(0, 'fwd'); },
   gosign() { ui.pre = 'signup'; pushNav(); render(0, 'fwd'); },
-  dologin() { if (!S.onboarded) { ui.onbStep = 0; ui.pre = 'onboard'; pushNav(); render(0, 'fwd'); } else A.start(); },
-  dosignup() { ui.onbStep = 0; ui.pre = 'onboard'; pushNav(); render(0, 'fwd'); },
+  dologin() {
+    const em = $('#lem'); if (em && em.value.trim()) S.account.email = em.value.trim();
+    save();
+    if (!S.onboarded) { ui.onbStep = 0; ui.pre = 'onboard'; pushNav(); render(0, 'fwd'); } else A.start();
+  },
+  dosignup() {
+    const nm = $('#snm'), em = $('#sem');
+    if (nm && nm.value.trim()) S.account.name = nm.value.trim();
+    if (em && em.value.trim()) S.account.email = em.value.trim();
+    save();
+    ui.onbStep = 0; ui.pre = 'onboard'; pushNav(); render(0, 'fwd');
+  },
   gmail() {
+    S.account = { name: 'Demo Google User', email: 'demo.google.user@pricewise.example' }; save();
     toast('Prototype: signed in with a demo profile — no Google account was used', 3600);
     if (!S.onboarded) { ui.onbStep = 0; ui.pre = 'onboard'; pushNav(); render(0, 'fwd'); } else A.start();
   },
@@ -116,7 +141,7 @@ const A = {
   onbskip() { S.onboarded = true; save(); ui.onbStep = 0; ui.pre = 'splash'; A.start(); },
   onbdone() { S.onboarded = true; save(); ui.onbStep = 0; ui.pre = 'splash'; A.start(); },
   back() { window.history.back(); },
-  tab(d) { if (d.t === ui.tab) ui.stacks[d.t].length = 1; ui.tab = d.t; settleSheet(); pushNav(); render(0); },
+  tab(d) { settleSheet(); if (d.t === ui.tab) ui.stacks[d.t].length = 1; ui.tab = d.t; pushNav(); render(0); },
   open(d) { ui.f = FDEF(); ui.off = {}; ui.view = 'cards'; push('compare', { pid: d.pid }); },
   try() { doSearch('boAt 141 Airdopes'); },
   rs(d) { doSearch(d.q); },
@@ -194,8 +219,10 @@ const A = {
   },
   cb(d) { S.a11y.cb = d.v; save(); applyA11y(); render(1); },
   fs(d) { S.a11y.fs = d.v; save(); applyA11y(); render(1); },
+  theme() { S.theme = effTheme() === 'dark' ? 'light' : 'dark'; save(); applyTheme(); render(1); toast(S.theme === 'dark' ? 'Dark theme on' : 'Light theme on'); },
+  setTheme(d) { S.theme = d.v; save(); applyTheme(); render(1); },
   logout() { ui.started = false; ui.tab = 'home'; ui.pre = 'splash'; Object.keys(ui.stacks).forEach(k => ui.stacks[k].length = 1); replaceNav(); render(0); },
-  reset() { S = seedState(); save(); ui.f = FDEF(); ui.chat.length = 1; ui.q = ''; applyA11y(); render(1); toast('Prototype data reset'); },
+  reset() { S = seedState(); save(); ui.f = FDEF(); ui.chat.length = 1; ui.q = ''; applyA11y(); applyTheme(); render(1); toast('Prototype data reset'); },
   toast(d) { toast(d.m); },
   ask(d) { send(d.q); }
 };
@@ -294,5 +321,6 @@ document.addEventListener('pointerdown', scrub);
 /* ---------- boot ---------- */
 $('#tabs').innerHTML = [['home', 'home', 'Home'], ['ai', 'spark', 'AI Assistant'], ['wish', 'heart', 'Wishlist'], ['profile', 'user', 'Profile']].map(t => `<button data-act="tab" data-t="${t[0]}">${ic(t[1], 22)}<span>${t[2]}</span></button>`).join('');
 applyA11y();
+applyTheme();
 primeHistory();
 render(0);

@@ -71,7 +71,9 @@ const IC = {
   phone: '<path d="M6 3h4l2 5-2.5 1.5a11 11 0 0 0 5 5L16 12l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 4 5a2 2 0 0 1 2-2z"/>',
   box: '<path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/>',
   crown: '<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/>',
-  dot: '<circle cx="12" cy="12" r="3"/>'
+  dot: '<circle cx="12" cy="12" r="3"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'
 };
 const ic = (n, s = 18, cls = '') => `<svg class="ic ${cls}" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
 
@@ -187,7 +189,9 @@ const seedState = () => {
     a11y: { cb: 'normal', fs: 'm', hc: false },
     prefs: { push: true, email: false, analytics: false },
     onboarded: false,
-    addr: { label: 'Home', line: '14 Dwarka Greens', city: 'Delhi', pin: '110078' }
+    addr: { label: 'Home', line: '14 Dwarka Greens', city: 'Delhi', pin: '110078' },
+    theme: 'system',
+    account: { name: 'Guest User', email: 'guest@pricewise.example' }
   };
 };
 let S = seedState();
