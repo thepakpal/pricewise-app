@@ -72,7 +72,7 @@ function applyA11y() {
   app.style.filter = a.cb === 'normal' ? '' : `url(#f-${a.cb})`;
 }
 let tt;
-function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 2600); }
+function toast(m, ms) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), ms || 2600); }
 function openSheet(html) { const s = $('#sheet'); s.innerHTML = `<div class="scrim" data-act="closesheet"></div><div class="sheetc" role="dialog" aria-modal="true">${html}</div>`; s.hidden = false; pushNav(); const b = s.querySelector('button,select,input'); if (b) b.focus({ preventScroll: true }); }
 function closeSheet() { const s = $('#sheet'); s.hidden = true; s.innerHTML = ''; }
 
@@ -109,7 +109,7 @@ const A = {
   dologin() { if (!S.onboarded) { ui.onbStep = 0; ui.pre = 'onboard'; pushNav(); render(0, 'fwd'); } else A.start(); },
   dosignup() { ui.onbStep = 0; ui.pre = 'onboard'; pushNav(); render(0, 'fwd'); },
   gmail() {
-    toast('Signed in with Gmail (prototype)');
+    toast('Prototype: signed in with a demo profile — no Google account was used', 3600);
     if (!S.onboarded) { ui.onbStep = 0; ui.pre = 'onboard'; pushNav(); render(0, 'fwd'); } else A.start();
   },
   onbnext() { ui.onbStep = (ui.onbStep || 0) + 1; pushNav(); render(0, 'fwd'); },
@@ -144,7 +144,7 @@ const A = {
   swap(d) { const pid = cp(); ui.stacks[ui.tab].pop(); push('confirm', { pid, k: d.k }); },
   go(d) {
     const p = byId(cp()), l = listings(p).find(x => x.k === d.k);
-    openSheet(`<h3>Prototype checkpoint</h3><p class="body">In the live app this opens ${l.pl.name} so you can finish checkout there. In this prototype you stay here.</p><button class="cta full" data-act="bought" data-k="${d.k}">I bought it: add to Purchase History</button><button class="btn2 full" data-act="closesheet">Keep comparing</button>`);
+    openSheet(`<h3>This is where the redirect happens</h3><p class="body">In the finished app, this button opens <b>${l.pl.name}</b>'s own app or site so you pay there — PriceWise never handles payments itself. This build isn't connected to a real retailer, so nothing opens automatically.</p><p class="hint">Tap below to simulate finishing that purchase and see it land in your Purchase History.</p><button class="cta full" data-act="bought" data-k="${d.k}">Simulate purchase ${ic('right', 14)}</button><button class="btn2 full" data-act="closesheet">Back to comparing</button>`);
   },
   bought(d) {
     const pid = cp(), p = byId(pid), L = listings(p), l = L.find(x => x.k === d.k), hi = Math.max(...L.map(x => x.price));
